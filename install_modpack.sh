@@ -1,32 +1,47 @@
 #!/bin/bash
 
-# Verifica se o link do modpack foi fornecido
-if [ -z "${modpack_url}" ]; then
-    echo "Erro: URL do modpack não fornecida."
+# Verifica se o parâmetro foi fornecido
+if [ $# -eq 0 ]; then
+    echo "Nenhum URL fornecido, pulando instalação de modpack."
+    exit 0
+fi
+
+MODPACK_URL="$1"
+MODPACK_ZIP="modpack.zip"
+MODPACK_DIR="mods"
+
+# Verifica se o wget está instalado
+if ! command -v wget &> /dev/null; then
+    echo "Erro: wget não está instalado." >&2
     exit 1
 fi
 
-# Nome do arquivo ZIP do modpack
-MODPACK_ZIP="modpack.zip"
+# Verifica se o unzip está instalado
+if ! command -v unzip &> /dev/null; then
+    echo "Erro: unzip não está instalado." >&2
+    exit 1
+fi
 
-# Diretório de destino para extração
-MODPACK_DIR="mods"
+echo "Baixando modpack de ${MODPACK_URL}..."
+if ! wget --tries=3 --timeout=30 -O "${MODPACK_ZIP}" "${MODPACK_URL}"; then
+    echo "Erro ao baixar o modpack de ${MODPACK_URL}" >&2
+    exit 1
+fi
 
-echo "Baixando modpack de ${modpack_url}..."
-wget -O "${MODPACK_ZIP}" "${modpack_url}"
-
-if [ $? -ne 0 ]; then
-    echo "Erro ao baixar o modpack."
+# Verifica se o arquivo baixado é um ZIP válido
+if ! unzip -t "${MODPACK_ZIP}" &> /dev/null; then
+    echo "Erro: O arquivo baixado não é um ZIP válido ou está corrompido." >&2
+    rm -f "${MODPACK_ZIP}"
     exit 1
 fi
 
 echo "Descompactando modpack..."
-unzip -o "${MODPACK_ZIP}" -d "${MODPACK_DIR}"
-
-if [ $? -ne 0 ]; then
-    echo "Erro ao descompactar o modpack."
+if ! unzip -o -q "${MODPACK_ZIP}" -d "${MODPACK_DIR}"; then
+    echo "Erro ao descompactar o modpack." >&2
+    echo "Verifique se o diretório ${MODPACK_DIR} existe e tem permissões adequadas." >&2
+    rm -f "${MODPACK_ZIP}"
     exit 1
 fi
 
-echo "Modpack instalado com sucesso!"
+echo "Modpack instalado com sucesso em ${MODPACK_DIR}/"
 rm -f "${MODPACK_ZIP}"
